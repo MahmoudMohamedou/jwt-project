@@ -2,10 +2,11 @@ import express from "express";
 import cors from "cors";
 import env from "dotenv";
 import { router as authRoute } from "./routes/auth.route.js";
-import { logger, verifyToken } from "./middlewares/errorLogger.js";
+import { logger } from "./middlewares/errorLogger.js";
 import { userRouter } from "./routes/user.route.js";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
+import { verifyToken } from "./middlewares/verify-token.middleware.js";
 
 env.config();
 

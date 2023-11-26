@@ -64,7 +64,7 @@ export const loginHandler = asyncHandler(async (req, res, __) => {
   }
 });
 
-export const logoutHandler = async (req, res) => {
+export const logoutHandler = asyncHandler(async (req, res) => {
   // delete token from db
   const token = getToken(req, res);
   const tokenId = jsonwebtoken.decode(token).tokenId;
@@ -74,8 +74,8 @@ export const logoutHandler = async (req, res) => {
     },
   });
 
-  res.send("Logout Successfully!");
-};
+  res.send(true);
+});
 
 export const refreshTokenHandler = async (req, res) => {
   const { refreshToken } = req.body;
