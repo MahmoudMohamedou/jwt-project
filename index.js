@@ -25,6 +25,10 @@ app.post("/login", (req, res) => {
   res.send("Test");
 });
 
+app.post("/login1", () => {
+
+})
+
 app.listen(process.env.PORT, () => {
   console.log("Start Server App...");
 });
