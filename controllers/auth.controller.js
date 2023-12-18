@@ -2,6 +2,8 @@ import { context } from "../config.js";
 import asyncHandler from "express-async-handler";
 import bcrypt from "bcrypt";
 import jsonwebtoken from "jsonwebtoken";
+import { v4 as uuid } from "uuid";
+import { getToken } from "../utils/token.utils.js";
 
 export const loginHandler = asyncHandler(async (req, res, __) => {
   // Check user credentials
@@ -22,10 +24,19 @@ export const loginHandler = asyncHandler(async (req, res, __) => {
 
     // generate access token & refresh token
 
+    // save token record in db
+
+    const tokenRecord = await context.prismaClient.token.create({
+      data: {
+        userId: user.id,
+      },
+    });
+
     const payload = {
       email,
       username: user.username,
       id: user.id,
+      tokenId: tokenRecord.tokenId,
     };
 
     const accessToken = jsonwebtoken.sign(
@@ -39,12 +50,9 @@ export const loginHandler = asyncHandler(async (req, res, __) => {
       payload,
       process.env.SECRET_REFRESH_TOKEN,
       {
-        expiresIn: "1 day",
+        expiresIn: "7 days",
       }
     );
-
-    res.cookie("access-token", accessToken);
-    res.cookie("refresh-token", refreshToken);
 
     res.status(200).send({
       user,
@@ -56,45 +64,78 @@ export const loginHandler = asyncHandler(async (req, res, __) => {
   }
 });
 
-export const logoutHandler = (req, res) => {
-  console.log("Logout!");
-};
+export const logoutHandler = asyncHandler(async (req, res) => {
+  // delete token from db
+  const token = getToken(req, res);
+  const tokenId = jsonwebtoken.decode(token).tokenId;
+  await context.prismaClient.token.delete({
+    where: {
+      tokenId,
+    },
+  });
 
-export const refreshTokenHandler = (req, res) => {
-  const { refrechToken } = req.body;
-  const authorization = req.headers.authorization;
-  const accessToken = authorization ? authorization.split(" ")[1] : null;
+  res.send(true);
+});
 
-  if (!accessToken) return res.status(500).send("Access Token not provided!");
-
-  let tokenId;
+export const refreshTokenHandler = async (req, res) => {
+  const { refreshToken } = req.body;
+  const accessToken = getToken(req, res);
 
   try {
-    tokenId = jsonwebtoken.verify(accessToken, process.env.SECRET_ACCESS_TOKEN);
+    currentAccessToken = jsonwebtoken.verify(
+      accessToken,
+      process.env.SECRET_ACCESS_TOKEN
+    );
 
-    return res.send({ accessToken, refrechToken });
+    return res.send({ accessToken, refreshToken });
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       // Check refrech Token
 
       try {
-        const refreshTokenId = jsonwebtoken.verify(
-          refrechToken,
+        const currentRefreshToken = jsonwebtoken.verify(
+          refreshToken,
           process.env.SECRET_REFRESH_TOKEN
         );
+
+        const updatedToken = await context.prismaClient.token.update({
+          where: {
+            tokenId: currentRefreshToken.payload.tokenId,
+          },
+          data: {
+            tokenId: uuid(),
+          },
+        });
+
         // Generate new Tokens
 
+        const { email, username, id } = currentRefreshToken.payload;
+
+        const payload = {
+          email,
+          username,
+          id,
+          tokenId: updatedToken.tokenId,
+        };
+
         const newRefreshToken = jsonwebtoken.sign(
-          refreshTokenId.payload,
-          process.env.SECRET_REFRESH_TOKEN
+          payload,
+          process.env.SECRET_REFRESH_TOKEN,
+          {
+            expiresIn: "7 days",
+          }
         );
         const newToken = jsonwebtoken.sign(
-          tokenId.payload,
-          process.env.SECRET_ACCESS_TOKEN
+          payload,
+          process.env.SECRET_ACCESS_TOKEN,
+          {
+            expiresIn: "1 hour",
+          }
         );
+
         return res.send({
           accessToken: newToken,
-          refrechToken: newRefreshToken,
+          refreshToken: newRefreshToken,
         });
       } catch (err) {
         return res.status(500).send(err);

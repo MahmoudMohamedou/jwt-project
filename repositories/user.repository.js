@@ -4,8 +4,6 @@ import bcrypt from "bcrypt";
 export const createUser = async (input) => {
   const { password } = input;
 
-  console.log(input);
-
   const salt = 10;
 
   // hash password

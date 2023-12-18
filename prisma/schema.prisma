@@ -16,4 +16,13 @@ model User {
   email    String  @unique(map: "unique_email")
   password String
   logo     String?
+  tokens   Token[]
+}
+
+model Token {
+  tokenId   String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
 }

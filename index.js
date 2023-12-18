@@ -21,9 +21,13 @@ app.use("/auth", authRoute);
 app.use("/users", verifyToken, userRouter);
 app.use(logger);
 
-// app.post("/login", (req, res) => {
-//   res.send("Test");
-// });
+app.post("/login", (req, res) => {
+  res.send("Test");
+});
+
+app.post("/login1", () => {
+
+})
 
 app.listen(process.env.PORT, () => {
   console.log("Start Server App...");
